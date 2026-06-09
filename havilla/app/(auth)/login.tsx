@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, StatusBar
+  StyleSheet, Alert, StatusBar, Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -24,7 +24,11 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert('Login Failed', error.message);
     } else if (data.user) {
-      setUser({ id: data.user.id, email: data.user.email!, token: data.session?.access_token || '' });
+      setUser({
+        id: data.user.id,
+        email: data.user.email!,
+        token: data.session?.access_token || '',
+      });
       router.replace('/(tabs)');
     }
     setLoading(false);
@@ -34,13 +38,18 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.top}>
-        <Text style={styles.logo}>🏛️</Text>
+        <Image
+          source={{ uri: 'https://res.cloudinary.com/dzvcbnbmf/image/upload/v1779952601/Logo_2_rll90v.png' }}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.appName}>Havilla</Text>
         <Text style={styles.tagline}>Book the perfect venue</Text>
       </View>
       <View style={styles.form}>
         <Text style={styles.welcomeText}>Welcome Back 👋</Text>
         <Text style={styles.subText}>Login to continue</Text>
+
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Email</Text>
           <TextInput
@@ -53,6 +62,7 @@ export default function LoginScreen() {
             autoCapitalize="none"
           />
         </View>
+
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Password</Text>
           <View style={styles.passwordRow}>
@@ -69,12 +79,15 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
         <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password' as any)} style={styles.forgotRow}>
           <Text style={styles.forgotLink}>Forgot Password?</Text>
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
           <Text style={styles.loginText}>{loading ? 'Logging in...' : 'Login'}</Text>
         </TouchableOpacity>
+
         <View style={styles.signupRow}>
           <Text style={styles.signupText}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => router.push('/(auth)/signup' as any)}>
@@ -89,7 +102,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#6C63FF' },
   top: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
-  logo: { fontSize: 70, marginBottom: 12 },
+  logo: { width: 120, height: 120, marginBottom: 12 },
   appName: { color: '#fff', fontSize: 36, fontWeight: 'bold', letterSpacing: 2 },
   tagline: { color: 'rgba(255,255,255,0.7)', fontSize: 16, marginTop: 8 },
   form: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingTop: 40 },

@@ -15,14 +15,22 @@ export default function RootLayout() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email!, token: session.access_token });
+        setUser({
+          id: session.user.id,
+          email: session.user.email!,
+          token: session.access_token,
+        });
       }
       setReady(true);
     });
 
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email!, token: session.access_token });
+        setUser({
+          id: session.user.id,
+          email: session.user.email!,
+          token: session.access_token,
+        });
       } else {
         setUser(null);
       }

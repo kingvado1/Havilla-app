@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, StatusBar, ScrollView
+  StyleSheet, Alert, StatusBar, ScrollView, Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { api } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
+
+const HAVILLA_LOGO = 'https://res.cloudinary.com/dzvcbnbmf/image/upload/v1779952601/Logo_2_rll90v.png';
 
 export default function SignupScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -17,21 +20,22 @@ export default function SignupScreen() {
   async function handleSignup() {
     if (!fullName) { Alert.alert('Missing Name', 'Please enter your full name!'); return; }
     if (!email) { Alert.alert('Missing Email', 'Please enter your email!'); return; }
+    if (!phone) { Alert.alert('Missing Phone', 'Please enter your phone number!'); return; }
     if (!password) { Alert.alert('Missing Password', 'Please enter your password!'); return; }
     if (password.length < 6) { Alert.alert('Weak Password', 'Password must be at least 6 characters!'); return; }
 
     setLoading(true);
-    try {
-      const data = await api.register(fullName, email, password);
-      if (data.success) {
-        Alert.alert('Success! 🎉', 'Account created! Please login.', [
-          { text: 'OK', onPress: () => router.replace('/(auth)/login') }
-        ]);
-      } else {
-        Alert.alert('Signup Failed', data.message || 'Something went wrong');
-      }
-    } catch (error: any) {
-      Alert.alert('Connection Error', 'Could not connect to server. Please check your internet.');
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName, phone: phone } }
+    });
+    if (error) {
+      Alert.alert('Signup Failed', error.message);
+    } else {
+      Alert.alert('Success! 🎉', 'Check your email to confirm your account.', [
+        { text: 'OK', onPress: () => router.replace('/(auth)/login') }
+      ]);
     }
     setLoading(false);
   }
@@ -39,13 +43,15 @@ export default function SignupScreen() {
   return (
     <ScrollView style={styles.container} bounces={false}>
       <StatusBar barStyle="light-content" />
-
       <View style={styles.top}>
-        <Text style={styles.logo}>🏛️</Text>
+        <Image
+          source={{ uri: HAVILLA_LOGO }}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.appName}>Havilla</Text>
         <Text style={styles.tagline}>Book the perfect venue</Text>
       </View>
-
       <View style={styles.form}>
         <Text style={styles.welcomeText}>Create Account 🎉</Text>
         <Text style={styles.subText}>Join thousands of event planners</Text>
@@ -75,6 +81,18 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Phone Number</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. +2348012345678"
+            placeholderTextColor="#aaa"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Password</Text>
           <View style={styles.passwordRow}>
             <TextInput
@@ -85,18 +103,14 @@ export default function SignupScreen() {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
-            <TouchableOpacity
-              style={styles.eyeBtn}
-              onPress={() => setShowPassword(!showPassword)}>
+            <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPassword(!showPassword)}>
               <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <TouchableOpacity style={styles.signupBtn} onPress={handleSignup}>
-          <Text style={styles.signupText}>
-            {loading ? 'Creating account...' : 'Sign Up'}
-          </Text>
+          <Text style={styles.signupText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
         </TouchableOpacity>
 
         <View style={styles.loginRow}>
@@ -113,7 +127,7 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#6C63FF' },
   top: { justifyContent: 'center', alignItems: 'center', paddingTop: 60, paddingBottom: 32 },
-  logo: { fontSize: 70, marginBottom: 12 },
+  logo: { width: 120, height: 120, marginBottom: 12 },
   appName: { color: '#fff', fontSize: 36, fontWeight: 'bold', letterSpacing: 2 },
   tagline: { color: 'rgba(255,255,255,0.7)', fontSize: 16, marginTop: 8 },
   form: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingTop: 40, minHeight: 500 },

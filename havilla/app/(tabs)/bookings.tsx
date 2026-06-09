@@ -1,112 +1,331 @@
-import React from 'react';
-import {
-  View, Text, ScrollView,
-  TouchableOpacity, StyleSheet, StatusBar
+// app/(tabs)/bookings.tsx
+import React, { useState, useEffect } from 'react';
+import { 
+  View, Text, StyleSheet, ScrollView, Image,
+  ActivityIndicator, RefreshControl, SafeAreaView, TouchableOpacity, Alert 
 } from 'react-native';
+import { api } from '../../lib/api';
 
-const BOOKINGS = [
-  { id: '1', venue: 'The Grand Hall', date: 'Jun 15, 2026', status: 'confirmed', price: 150000, emoji: '🏛️', location: 'Lagos Island' },
-  { id: '2', venue: 'Sky Lounge', date: 'Jul 2, 2026', status: 'pending', price: 80000, emoji: '🌆', location: 'Victoria Island' },
-  { id: '3', venue: 'Executive Suite', date: 'May 20, 2026', status: 'cancelled', price: 50000, emoji: '💼', location: 'Lekki' },
-];
+const HAVILLA_LOGO = 'https://res.cloudinary.com/dzvcbnbmf/image/upload/v1779952601/Logo_2_rll90v.png';
 
-const STATUS_CONFIG: any = {
-  confirmed: { color: '#22c55e', bg: '#f0fdf4', label: '✅ Confirmed' },
-  pending: { color: '#f59e0b', bg: '#fffbeb', label: '⏳ Pending' },
-  cancelled: { color: '#ef4444', bg: '#fef2f2', label: '❌ Cancelled' },
-};
+export default function MyBookings() {
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Cancelled'>('All');
 
-export default function BookingsScreen() {
-  const confirmed = BOOKINGS.filter(b => b.status === 'confirmed').length;
-  const pending = BOOKINGS.filter(b => b.status === 'pending').length;
+  useEffect(() => {
+    fetchUserBookings();
+  }, []);
+
+  async function fetchUserBookings() {
+    try {
+      const response = await api.getBookings();
+      if (response.success && response.data) {
+        setBookings(response.data);
+      }
+    } catch (error) {
+      console.log("Error loading bookings:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  function onRefresh() {
+    setRefreshing(true);
+    fetchUserBookings();
+  }
+
+  async function handleConfirmBooking(id: string) {
+    setBookings(prev => prev.map(b => b._id === id ? { ...b, status: 'Confirmed' } : b));
+    if (typeof window !== 'undefined' && typeof alert !== 'undefined') {
+      alert("Booking Confirmed! Your venue space-lock is secured. ✅");
+    } else {
+      Alert.alert("Booking Confirmed", "Your venue space-lock is now officially secured! ✅");
+    }
+  }
+
+  function handleCancelBooking(id: string) {
+    const message = "Are you sure you want to cancel this venue reservation?";
+    if (typeof window !== 'undefined' && window.confirm) {
+      if (window.confirm(message)) {
+        setBookings(prev => prev.map(b => b._id === id ? { ...b, status: 'Cancelled' } : b));
+      }
+    } else {
+      Alert.alert("Cancel Booking", message, [
+        { text: "No, Keep It", style: "cancel" },
+        { text: "Yes, Cancel", style: "destructive",
+          onPress: () => setBookings(prev => prev.map(b => b._id === id ? { ...b, status: 'Cancelled' } : b))
+        }
+      ]);
+    }
+  }
+
+  const pendingCount = bookings.filter(b => b.status === 'Pending').length;
+  const confirmedCount = bookings.filter(b => b.status === 'Confirmed').length;
+  const cancelledCount = bookings.filter(b => b.status === 'Cancelled').length;
+
+  const filteredBookings = activeFilter === 'All'
+    ? bookings
+    : bookings.filter(b => b.status === activeFilter);
+
+  const getBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'Confirmed': return styles.badgeConfirmed;
+      case 'Cancelled': return styles.badgeCancelled;
+      default: return styles.badgePending;
+    }
+  };
+
+  const getTextStyle = (status: string) => {
+    switch (status) {
+      case 'Confirmed': return styles.textConfirmed;
+      case 'Cancelled': return styles.textCancelled;
+      default: return styles.textPending;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Confirmed': return '✅ ';
+      case 'Cancelled': return '❌ ';
+      default: return '⏳ ';
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Image source={{ uri: HAVILLA_LOGO }} style={styles.loadingLogo} resizeMode="contain" />
+        <ActivityIndicator size="large" color="#6C63FF" style={{ marginTop: 20 }} />
+        <Text style={styles.loadingText}>Fetching your reservations...</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>My Bookings 📅</Text>
-        <Text style={styles.subtitle}>Track your reservations</Text>
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{confirmed}</Text>
-            <Text style={styles.statLabel}>Confirmed</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" />
+        }
+      >
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTopRow}>
+            <View>
+              <Text style={styles.headerTitle}>My Bookings</Text>
+              <Text style={styles.headerSubtitle}>Track your reservations</Text>
+            </View>
+            <Image source={{ uri: HAVILLA_LOGO }} style={styles.logo} resizeMode="contain" />
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{pending}</Text>
-            <Text style={styles.statLabel}>Pending</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{BOOKINGS.length}</Text>
-            <Text style={styles.statLabel}>Total</Text>
+
+          {/* Stats Card */}
+          <View style={styles.statsCardContainer}>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>{pendingCount}</Text>
+              <Text style={styles.statLabel}>Pending</Text>
+            </View>
+            <View style={[styles.statBox, styles.statBoxBorder]}>
+              <Text style={styles.statNumber}>{confirmedCount}</Text>
+              <Text style={styles.statLabel}>Confirmed</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>{cancelledCount}</Text>
+              <Text style={styles.statLabel}>Cancelled</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Bookings List */}
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.list}>
-        <Text style={styles.sectionTitle}>Recent Bookings</Text>
+        <View style={styles.listContainer}>
 
-        {BOOKINGS.map((booking) => {
-          const statusConfig = STATUS_CONFIG[booking.status];
-          return (
-            <TouchableOpacity key={booking.id} style={styles.card}>
-              {/* Card Left */}
-              <View style={styles.cardEmoji}>
-                <Text style={styles.emoji}>{booking.emoji}</Text>
-              </View>
+          {/* Filter Tabs */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+            {['All', 'Pending', 'Confirmed', 'Cancelled'].map((filter) => (
+              <TouchableOpacity
+                key={filter}
+                style={[styles.filterPill, activeFilter === filter && styles.filterPillActive]}
+                onPress={() => setActiveFilter(filter as any)}
+              >
+                <Text style={[styles.filterPillText, activeFilter === filter && styles.filterPillTextActive]}>
+                  {filter}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-              {/* Card Content */}
-              <View style={styles.cardContent}>
-                <View style={styles.cardTop}>
-                  <Text style={styles.venueName}>{booking.venue}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-                    <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                      {statusConfig.label}
+          {/* Bookings List */}
+          {filteredBookings.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>🗓️</Text>
+              <Text style={styles.emptyTitle}>No bookings found</Text>
+              <Text style={styles.emptySubText}>
+                {activeFilter === 'All'
+                  ? 'You have no venue bookings yet.'
+                  : 'No ' + activeFilter.toLowerCase() + ' bookings found.'}
+              </Text>
+            </View>
+          ) : (
+            filteredBookings.map((item) => (
+              <View key={item._id} style={styles.cardWrapper}>
+                <View style={styles.bookingCard}>
+                  <View style={styles.leftRow}>
+                    <View style={styles.iconContainer}>
+                      <Text style={styles.buildingIcon}>🏛️</Text>
+                    </View>
+                    <View style={styles.metaTextGroup}>
+                      <Text style={styles.venueName}>{item.venueName || 'Premium Venue'}</Text>
+                      <Text style={styles.bookingDate}>📅 {item.date}</Text>
+                      <Text style={styles.bookingPrice}>₦{item.price?.toLocaleString()}</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.statusBadge, getBadgeStyle(item.status)]}>
+                    <Text style={[styles.statusText, getTextStyle(item.status)]}>
+                      {getStatusIcon(item.status)}{item.status}
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.location}>📍 {booking.location}</Text>
-                <View style={styles.cardBottom}>
-                  <Text style={styles.date}>📅 {booking.date}</Text>
-                  <Text style={styles.price}>₦{booking.price.toLocaleString()}</Text>
-                </View>
+
+                {item.status === 'Pending' && (
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.cancelButton]}
+                      onPress={() => handleCancelBooking(item._id)}
+                    >
+                      <Text style={styles.cancelActionText}>✕ Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.confirmButton]}
+                      onPress={() => handleConfirmBooking(item._id)}
+                    >
+                      <Text style={styles.confirmActionText}>✓ Confirm Pay</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
-            </TouchableOpacity>
-          );
-        })}
+            ))
+          )}
+        </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F4FF' },
-  header: { backgroundColor: '#6C63FF', padding: 24, paddingTop: 55, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  title: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  subtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 14, marginTop: 4, marginBottom: 20 },
-  statsRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 16, padding: 16 },
-  statCard: { flex: 1, alignItems: 'center' },
-  statNumber: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  statLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 },
-  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-  list: { flex: 1, padding: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1a1a2e', marginBottom: 12, marginTop: 4 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, flexDirection: 'row', elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8 },
-  cardEmoji: { width: 56, height: 56, backgroundColor: '#F0F4FF', borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  emoji: { fontSize: 28 },
-  cardContent: { flex: 1 },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
-  venueName: { fontSize: 15, fontWeight: 'bold', color: '#1a1a2e', flex: 1, marginRight: 8 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  statusText: { fontSize: 10, fontWeight: '600' },
-  location: { color: '#888', fontSize: 12, marginBottom: 8 },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  date: { color: '#666', fontSize: 12 },
-  price: { color: '#6C63FF', fontWeight: 'bold', fontSize: 15 },
+  container: { flex: 1, backgroundColor: '#F8F9FD' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FD' },
+  loadingLogo: { width: 80, height: 80 },
+  loadingText: { color: '#6C63FF', marginTop: 12, fontSize: 15, fontWeight: '500' },
+  headerContainer: {
+    backgroundColor: '#6C63FF',
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 80,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  headerTitle: { fontSize: 26, fontWeight: 'bold', color: '#fff' },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
+  logo: { width: 52, height: 52 },
+  statsCardContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 16,
+    position: 'absolute',
+    bottom: -45,
+    left: 24,
+    right: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  statBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  statBoxBorder: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#EBF0FF' },
+  statNumber: { fontSize: 22, fontWeight: 'bold', color: '#1A1D42', marginBottom: 2 },
+  statLabel: { fontSize: 12, color: '#8A94A6' },
+  listContainer: { paddingHorizontal: 24, paddingTop: 75, paddingBottom: 40 },
+  filterRow: { flexDirection: 'row', marginBottom: 20 },
+  filterPill: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 12,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#EBF0FF',
+  },
+  filterPillActive: { backgroundColor: '#6C63FF', borderColor: '#6C63FF' },
+  filterPillText: { fontSize: 13, fontWeight: '500', color: '#4E5D78' },
+  filterPillTextActive: { color: '#fff', fontWeight: '600' },
+  cardWrapper: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  bookingCard: {
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  leftRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  iconContainer: {
+    backgroundColor: '#F0F2FF',
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  buildingIcon: { fontSize: 22 },
+  metaTextGroup: { flex: 1 },
+  venueName: { fontSize: 15, fontWeight: '700', color: '#1A1D42', marginBottom: 3 },
+  bookingDate: { fontSize: 12, color: '#8A94A6', marginBottom: 3 },
+  bookingPrice: { fontSize: 14, fontWeight: '700', color: '#6C63FF' },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  badgePending: { backgroundColor: '#FFF9E6' },
+  badgeConfirmed: { backgroundColor: '#E6F9F0' },
+  badgeCancelled: { backgroundColor: '#FFEBEB' },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  textPending: { color: '#FFB800' },
+  textConfirmed: { color: '#00C853' },
+  textCancelled: { color: '#FF4D4D' },
+  actionRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#F5F6FA',
+    backgroundColor: '#FAFBFF',
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: { borderRightWidth: 1, borderRightColor: '#F0F0F5' },
+  confirmButton: {},
+  cancelActionText: { color: '#FF4D4D', fontSize: 13, fontWeight: '700' },
+  confirmActionText: { color: '#00C853', fontSize: 13, fontWeight: '700' },
+  emptyContainer: { alignItems: 'center', paddingVertical: 60 },
+  emptyIcon: { fontSize: 56, marginBottom: 16 },
+  emptyTitle: { fontSize: 17, fontWeight: 'bold', color: '#1A1D42', marginBottom: 6 },
+  emptySubText: { fontSize: 13, color: '#8A94A6', textAlign: 'center' },
 });
