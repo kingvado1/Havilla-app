@@ -1,14 +1,16 @@
 // app/(tabs)/bookings.tsx
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   View, Text, StyleSheet, ScrollView, Image,
-  ActivityIndicator, RefreshControl, SafeAreaView, TouchableOpacity, Alert 
+  ActivityIndicator, RefreshControl, SafeAreaView, TouchableOpacity, Alert
 } from 'react-native';
-import { api } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 
 const HAVILLA_LOGO = 'https://res.cloudinary.com/dzvcbnbmf/image/upload/v1779952601/Logo_2_rll90v.png';
 
 export default function MyBookings() {
+  const user = useAuthStore((state) => state.user);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -20,12 +22,16 @@ export default function MyBookings() {
 
   async function fetchUserBookings() {
     try {
-      const response = await api.getBookings();
-      if (response.success && response.data) {
-        setBookings(response.data);
-      }
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setBookings(data || []);
     } catch (error) {
-      console.log("Error loading bookings:", error);
+      console.log('Error loading bookings:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -38,58 +44,70 @@ export default function MyBookings() {
   }
 
   async function handleConfirmBooking(id: string) {
-    setBookings(prev => prev.map(b => b._id === id ? { ...b, status: 'Confirmed' } : b));
-    if (typeof window !== 'undefined' && typeof alert !== 'undefined') {
-      alert("Booking Confirmed! Your venue space-lock is secured. ✅");
-    } else {
-      Alert.alert("Booking Confirmed", "Your venue space-lock is now officially secured! ✅");
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'confirmed' })
+        .eq('id', id);
+
+      if (error) throw error;
+      setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'confirmed' } : b));
+      Alert.alert('Booking Confirmed ✅', 'Your venue space-lock is secured!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
     }
   }
 
   function handleCancelBooking(id: string) {
-    const message = "Are you sure you want to cancel this venue reservation?";
-    if (typeof window !== 'undefined' && window.confirm) {
-      if (window.confirm(message)) {
-        setBookings(prev => prev.map(b => b._id === id ? { ...b, status: 'Cancelled' } : b));
-      }
-    } else {
-      Alert.alert("Cancel Booking", message, [
-        { text: "No, Keep It", style: "cancel" },
-        { text: "Yes, Cancel", style: "destructive",
-          onPress: () => setBookings(prev => prev.map(b => b._id === id ? { ...b, status: 'Cancelled' } : b))
+    Alert.alert('Cancel Booking', 'Are you sure you want to cancel this reservation?', [
+      { text: 'No, Keep It', style: 'cancel' },
+      {
+        text: 'Yes, Cancel', style: 'destructive',
+        onPress: async () => {
+          try {
+            const { error } = await supabase
+              .from('bookings')
+              .update({ status: 'cancelled' })
+              .eq('id', id);
+
+            if (error) throw error;
+            setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
+          } catch (error: any) {
+            Alert.alert('Error', error.message);
+          }
         }
-      ]);
-    }
+      }
+    ]);
   }
 
-  const pendingCount = bookings.filter(b => b.status === 'Pending').length;
-  const confirmedCount = bookings.filter(b => b.status === 'Confirmed').length;
-  const cancelledCount = bookings.filter(b => b.status === 'Cancelled').length;
+  const pendingCount = bookings.filter(b => b.status === 'pending').length;
+  const confirmedCount = bookings.filter(b => b.status === 'confirmed').length;
+  const cancelledCount = bookings.filter(b => b.status === 'cancelled').length;
 
   const filteredBookings = activeFilter === 'All'
     ? bookings
-    : bookings.filter(b => b.status === activeFilter);
+    : bookings.filter(b => b.status === activeFilter.toLowerCase());
 
   const getBadgeStyle = (status: string) => {
     switch (status) {
-      case 'Confirmed': return styles.badgeConfirmed;
-      case 'Cancelled': return styles.badgeCancelled;
+      case 'confirmed': return styles.badgeConfirmed;
+      case 'cancelled': return styles.badgeCancelled;
       default: return styles.badgePending;
     }
   };
 
   const getTextStyle = (status: string) => {
     switch (status) {
-      case 'Confirmed': return styles.textConfirmed;
-      case 'Cancelled': return styles.textCancelled;
+      case 'confirmed': return styles.textConfirmed;
+      case 'cancelled': return styles.textCancelled;
       default: return styles.textPending;
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'Confirmed': return '✅ ';
-      case 'Cancelled': return '❌ ';
+      case 'confirmed': return '✅ ';
+      case 'cancelled': return '❌ ';
       default: return '⏳ ';
     }
   };
@@ -169,16 +187,16 @@ export default function MyBookings() {
             </View>
           ) : (
             filteredBookings.map((item) => (
-              <View key={item._id} style={styles.cardWrapper}>
+              <View key={item.id} style={styles.cardWrapper}>
                 <View style={styles.bookingCard}>
                   <View style={styles.leftRow}>
                     <View style={styles.iconContainer}>
                       <Text style={styles.buildingIcon}>🏛️</Text>
                     </View>
                     <View style={styles.metaTextGroup}>
-                      <Text style={styles.venueName}>{item.venueName || 'Premium Venue'}</Text>
+                      <Text style={styles.venueName}>{item.venue_name || 'Premium Venue'}</Text>
                       <Text style={styles.bookingDate}>📅 {item.date}</Text>
-                      <Text style={styles.bookingPrice}>₦{item.price?.toLocaleString()}</Text>
+                      <Text style={styles.bookingPrice}>₦{Number(item.total_price).toLocaleString()}</Text>
                     </View>
                   </View>
                   <View style={[styles.statusBadge, getBadgeStyle(item.status)]}>
@@ -188,17 +206,17 @@ export default function MyBookings() {
                   </View>
                 </View>
 
-                {item.status === 'Pending' && (
+                {item.status === 'pending' && (
                   <View style={styles.actionRow}>
                     <TouchableOpacity
                       style={[styles.actionButton, styles.cancelButton]}
-                      onPress={() => handleCancelBooking(item._id)}
+                      onPress={() => handleCancelBooking(item.id)}
                     >
                       <Text style={styles.cancelActionText}>✕ Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.actionButton, styles.confirmButton]}
-                      onPress={() => handleConfirmBooking(item._id)}
+                      onPress={() => handleConfirmBooking(item.id)}
                     >
                       <Text style={styles.confirmActionText}>✓ Confirm Pay</Text>
                     </TouchableOpacity>

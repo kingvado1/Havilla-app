@@ -1,17 +1,16 @@
 {
   "expo": {
-    "name": "havilla",
+    "name": "Havilla",
     "slug": "havilla",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "havilla",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#6C63FF"
     },
     "ios": {
       "supportsTablet": true
@@ -22,7 +21,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kingvado1sorganization.havilla"
     },
     "web": {
       "bundler": "metro",
@@ -35,6 +35,19 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "08161b4d-32e7-4147-8a6f-97d9acc8def1"
+      }
+    },
+    "owner": "kingvado1s-organization",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/08161b4d-32e7-4147-8a6f-97d9acc8def1"
     }
   }
 }

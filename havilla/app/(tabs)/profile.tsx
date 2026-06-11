@@ -1,24 +1,43 @@
-import React, { useState } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, SafeAreaView, 
+import React, { useState, useEffect } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, SafeAreaView,
   TouchableOpacity, Switch, TextInput, Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 
 const HAVILLA_LOGO = 'https://res.cloudinary.com/dzvcbnbmf/image/upload/v1779952601/Logo_2_rll90v.png';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  
+  const user = useAuthStore((state) => state.user);
+
   const [activeSubPage, setActiveSubPage] = useState<'menu' | 'notifications' | 'saved' | 'payments' | 'settings' | 'help'>('menu');
   const [pushEnabled, setPushEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [supportMessage, setSupportMessage] = useState('');
+  const [bookingCount, setBookingCount] = useState(0);
   const [savedVenues, setSavedVenues] = useState([
     { id: '1', name: 'Garden Paradise', location: 'Lekki Phase 1, Lagos', icon: '🌳', price: '₦120,000' },
     { id: '2', name: 'Executive Suite', location: 'Victoria Island, Lagos', icon: '🏢', price: '₦50,000' }
   ]);
+
+  useEffect(() => {
+    fetchBookingCount();
+  }, []);
+
+  async function fetchBookingCount() {
+    try {
+      const { count } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user?.id);
+      setBookingCount(count || 0);
+    } catch (error) {
+      console.log('Error fetching booking count:', error);
+    }
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -27,17 +46,20 @@ export default function ProfileScreen() {
 
   function handleUnsaveVenue(id: string, name: string) {
     setSavedVenues(prev => prev.filter(v => v.id !== id));
-    alert(name + " removed from your saved collection.");
+    alert(name + ' removed from your saved collection.');
   }
 
   function handleSendSupportTicket() {
     if (!supportMessage.trim()) {
-      alert("Please type a message before submitting.");
+      alert('Please type a message before submitting.');
       return;
     }
-    alert("Message Received! Our support desk will reach out via email within 24 hours. 🛡️");
+    alert('Message Received! Our support desk will reach out via email within 24 hours. 🛡️');
     setSupportMessage('');
   }
+
+  // Get username from email
+  const username = user?.email?.split('@')[0] || 'User';
 
   if (activeSubPage === 'notifications') {
     return (
@@ -56,7 +78,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.notificationCard}>
             <Text style={styles.notifTitle}>⏳ Action Required: Complete Pay</Text>
-            <Text style={styles.notifBody}>You have a pending booking request awaiting workspace verification layout authorization.</Text>
+            <Text style={styles.notifBody}>You have a pending booking request awaiting confirmation.</Text>
             <Text style={styles.notifTime}>2 hours ago</Text>
           </View>
         </ScrollView>
@@ -112,11 +134,11 @@ export default function ProfileScreen() {
             <Text style={styles.cardCompany}>HAVILLA PREPAID</Text>
             <Text style={styles.cardNumber}>* * ** 4298</Text>
             <View style={styles.cardRow}>
-              <Text style={styles.cardHolder}>MITY BROWN</Text>
+              <Text style={styles.cardHolder}>{username.toUpperCase()}</Text>
               <Text style={styles.cardExpiry}>09/29</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.addCardButton} onPress={() => alert("Secure payment gateway link setup initialized.")}>
+          <TouchableOpacity style={styles.addCardButton} onPress={() => alert('Secure payment gateway link setup initialized.')}>
             <Text style={styles.addCardText}>+ Link New Debit Card</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -142,7 +164,7 @@ export default function ProfileScreen() {
             <Text style={styles.settingLabel}>Dark Mode Preview</Text>
             <Switch value={darkModeEnabled} onValueChange={setDarkModeEnabled} trackColor={{ true: '#6C63FF' }} />
           </View>
-          <TouchableOpacity style={styles.dangerActionBtn} onPress={() => alert("Account data wipe cascade suspended safely.")}>
+          <TouchableOpacity style={styles.dangerActionBtn} onPress={() => alert('Account data wipe cascade suspended safely.')}>
             <Text style={styles.dangerActionText}>Deactivate Havilla Account</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -160,11 +182,11 @@ export default function ProfileScreen() {
           <Text style={styles.subHeaderTitle}>Help & Support 🛡️</Text>
         </View>
         <ScrollView contentContainerStyle={styles.subScrollContent}>
-          <Text style={styles.helpIntro}>Have inquiries or payment tracking disputes? Send a support message to our lagos operations hub directly below.</Text>
-          <TextInput 
-            style={styles.supportInput} 
-            placeholder="Type your message or issue details here..." 
-            multiline 
+          <Text style={styles.helpIntro}>Have inquiries or payment tracking disputes? Send a support message to our Lagos operations hub directly below.</Text>
+          <TextInput
+            style={styles.supportInput}
+            placeholder="Type your message or issue details here..."
+            multiline
             numberOfLines={5}
             value={supportMessage}
             onChangeText={setSupportMessage}
@@ -181,27 +203,23 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.headerContainer}>
-          <Image
-            source={{ uri: HAVILLA_LOGO }}
-            style={styles.havillaLogo}
-            resizeMode="contain"
-          />
+          <Image source={{ uri: HAVILLA_LOGO }} style={styles.havillaLogo} resizeMode="contain" />
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarIcon}>👤</Text>
           </View>
-          <Text style={styles.profileName}>mitybrown</Text>
-          <Text style={styles.profileEmail}>mitybrown@gmail.com</Text>
+          <Text style={styles.profileName}>{username}</Text>
+          <Text style={styles.profileEmail}>{user?.email || ''}</Text>
           <View style={styles.statsCardContainer}>
             <View style={styles.statBox}>
-              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statNumber}>{bookingCount}</Text>
               <Text style={styles.statLabel}>Bookings</Text>
             </View>
             <View style={[styles.statBox, styles.statBoxBorder]}>
-              <Text style={styles.statNumber}>2</Text>
-              <Text style={styles.statLabel}>Venues</Text>
+              <Text style={styles.statNumber}>{savedVenues.length}</Text>
+              <Text style={styles.statLabel}>Saved</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statNumber}>1</Text>
+              <Text style={styles.statNumber}>0</Text>
               <Text style={styles.statLabel}>Reviews</Text>
             </View>
           </View>
@@ -232,8 +250,6 @@ export default function ProfileScreen() {
             <Text style={styles.menuRowLeft}>🛡️  Help & Support</Text>
             <Text style={styles.arrowIcon}>›</Text>
           </TouchableOpacity>
-
-          {/* Logout Button */}
           <TouchableOpacity style={[styles.menuRow, styles.logoutRow]} onPress={handleLogout}>
             <Text style={styles.logoutText}>🚪  Log Out</Text>
             <Text style={styles.arrowIcon}>›</Text>
@@ -254,7 +270,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     alignItems: 'center',
-    position: 'relative'
+    position: 'relative',
   },
   havillaLogo: { width: 60, height: 60, position: 'absolute', top: 20, right: 24 },
   avatarCircle: { width: 80, height: 80, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
@@ -316,7 +332,7 @@ const styles = StyleSheet.create({
   dangerActionBtn: { marginTop: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   dangerActionText: { color: '#FF4D4D', fontWeight: '600', fontSize: 14 },
   helpIntro: { fontSize: 14, color: '#4E5D78', lineHeight: 20, marginBottom: 16 },
-  supportInput: { backgroundColor: '#fff', borderRadius: 16, padding: 16, textAlignVertical: 'top', fontSize: 14, color: '#1A1D42', borderStyle: 'solid', borderWidth: 1, borderColor: '#EBF0FF', marginBottom: 16 },
+  supportInput: { backgroundColor: '#fff', borderRadius: 16, padding: 16, textAlignVertical: 'top', fontSize: 14, color: '#1A1D42', borderWidth: 1, borderColor: '#EBF0FF', marginBottom: 16 },
   submitSupportBtn: { backgroundColor: '#6C63FF', paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-  submitSupportText: { color: '#fff', fontWeight: 'bold', fontSize: 15 }
+  submitSupportText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
 });

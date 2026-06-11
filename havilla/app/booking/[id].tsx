@@ -8,7 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Calendar } from 'react-native-calendars';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
-import { sendBookingNotification } from '../../lib/notifications';
+import { sendBookingNotification, sendBookingPendingNotification, sendBookingReminderNotification } from '../../lib/notifications';
 
 const HAVILLA_LOGO = 'https://res.cloudinary.com/dzvcbnbmf/image/upload/v1779952601/Logo_2_rll90v.png';
 
@@ -22,7 +22,6 @@ export default function BookingScreen() {
   const venueName = name ? decodeURIComponent(name as string) : 'Venue';
   const venuePrice = Number(price) || 0;
 
-  // Get today's date to disable past dates
   const today = new Date().toISOString().split('T')[0];
 
   async function handleConfirmBooking() {
@@ -43,7 +42,15 @@ export default function BookingScreen() {
 
       if (error) throw error;
 
+      // Send pending notification immediately
+      await sendBookingPendingNotification(venueName, selectedDate);
+
+      // Send confirmed notification
       await sendBookingNotification(venueName, selectedDate);
+
+      // Send reminder notification 24 hours before event
+      await sendBookingReminderNotification(venueName, selectedDate);
+
       Alert.alert(
         'Booking Confirmed! 🎉',
         'Your booking is pending confirmation.',
@@ -177,7 +184,6 @@ export default function BookingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FD' },
-
   header: {
     backgroundColor: '#6C63FF',
     flexDirection: 'row',
@@ -194,9 +200,7 @@ const styles = StyleSheet.create({
   backText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   headerTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
   logo: { width: 44, height: 44 },
-
   scrollContent: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 120 },
-
   venueCard: {
     backgroundColor: '#fff', borderRadius: 20, padding: 20,
     flexDirection: 'row', alignItems: 'center', marginBottom: 28,
@@ -211,17 +215,14 @@ const styles = StyleSheet.create({
   venueInfo: { flex: 1 },
   venueName: { fontSize: 17, fontWeight: 'bold', color: '#1A1D42', marginBottom: 4 },
   venuePrice: { fontSize: 15, fontWeight: '700', color: '#6C63FF' },
-
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A1D42', marginBottom: 4 },
   sectionSubtitle: { fontSize: 13, color: '#8A94A6', marginBottom: 16 },
-
   calendarWrapper: {
     backgroundColor: '#fff', borderRadius: 20, marginBottom: 28,
     overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
-
   summaryCard: {
     backgroundColor: '#fff', borderRadius: 20, padding: 20, marginBottom: 24,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
@@ -238,13 +239,11 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#F5F6FA' },
   holdNotice: { backgroundColor: '#FFF8EC', borderRadius: 12, padding: 12, marginTop: 16 },
   holdNoticeText: { fontSize: 12, color: '#B7791F', lineHeight: 18 },
-
   noDateBox: {
     backgroundColor: '#fff', borderRadius: 20, padding: 24,
     alignItems: 'center', marginBottom: 24,
   },
   noDateText: { fontSize: 14, color: '#8A94A6', textAlign: 'center' },
-
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: '#fff', flexDirection: 'row',

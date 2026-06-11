@@ -29,6 +29,17 @@ export default function VenueDetail() {
     });
   };
 
+  const handleRequestQuote = () => {
+    router.push({
+      pathname: '/quote/[id]' as any,
+      params: {
+        id: Array.isArray(id) ? id[0] : id,
+        name: encodeURIComponent(venue.name),
+        price: venue.pricePerDay,
+      },
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
 
@@ -71,10 +82,9 @@ export default function VenueDetail() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <View>
-          <Text style={styles.footerPrice}>₦{venue.pricePerDay.toLocaleString()}</Text>
-          <Text style={styles.footerPriceLabel}>per day</Text>
-        </View>
+        <TouchableOpacity style={styles.quoteBtn} onPress={handleRequestQuote}>
+          <Text style={styles.quoteBtnText}>Request Quote 📩</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.bookBtn} onPress={handleBookNow}>
           <Text style={styles.bookBtnText}>Book Now 🎉</Text>
         </TouchableOpacity>
@@ -133,14 +143,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 16,
     borderTopWidth: 1, borderColor: '#F0F2FF', backgroundColor: '#fff',
+    gap: 12,
   },
-  footerPrice: { fontSize: 20, fontWeight: 'bold', color: '#1A1D42' },
-  footerPriceLabel: { fontSize: 12, color: '#8A94A6' },
+  quoteBtn: {
+    flex: 1,
+    borderWidth: 2, borderColor: '#6C63FF',
+    paddingVertical: 14, borderRadius: 16,
+    alignItems: 'center',
+  },
+  quoteBtnText: { color: '#6C63FF', fontSize: 14, fontWeight: '700' },
   bookBtn: {
+    flex: 1,
     backgroundColor: '#6C63FF',
-    paddingHorizontal: 32, paddingVertical: 14, borderRadius: 16,
+    paddingVertical: 14, borderRadius: 16,
+    alignItems: 'center',
     shadowColor: '#6C63FF', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2, shadowRadius: 8, elevation: 3,
   },
-  bookBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  bookBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

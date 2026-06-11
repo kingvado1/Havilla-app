@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
@@ -47,5 +48,12 @@ export default function RootLayout() {
     }
   }, [user, segments, ready]);
 
-  return <Slot />;
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <Slot />
+    </KeyboardAvoidingView>
+  );
 }
